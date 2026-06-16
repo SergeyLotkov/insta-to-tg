@@ -1,25 +1,27 @@
-print("VERSION 2")
-
 import os
 import requests
-import feedparser
+import instaloader
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
-RSS_URL = "https://rsshub.app/picuki/profile/handyclass.ru"
+L = instaloader.Instaloader()
 
-feed = feedparser.parse(RSS_URL)
+profile = instaloader.Profile.from_username(
+    L.context,
+    "handyclass.ru"
+)
 
-if not feed.entries:
-    print("Нет постов")
-    exit()
+post = next(profile.get_posts())
 
-post = feed.entries[0]
+text = f"""📸 Новый пост Instagram
 
-text = f"📸 Новый пост Instagram\n\n{post.title}\n{post.link}"
+{post.caption[:500] if post.caption else ''}
 
-requests.post(
+https://www.instagram.com/p/{post.shortcode}/
+"""
+
+r = requests.post(
     f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
     data={
         "chat_id": CHAT_ID,
@@ -27,4 +29,5 @@ requests.post(
     }
 )
 
-print("Отправлено")
+print("Telegram:", r.status_code)
+print("Post:", post.shortcode)
