@@ -1,19 +1,27 @@
+import feedparser
+import requests
 import os
-import instaloader
 
-L = instaloader.Instaloader()
+RSS_URL = "https://rsshub.app/instagram/user/handyclass.ru"
 
-L.login(
-    os.environ["IG_USERNAME"],
-    os.environ["IG_PASSWORD"]
-)
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-profile = instaloader.Profile.from_username(
-    L.context,
-    "handyclass.ru"
-)
+def send(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    requests.post(url, data={
+        "chat_id": CHAT_ID,
+        "text": text
+    })
 
-post = next(profile.get_posts())
+def main():
+    feed = feedparser.parse(RSS_URL)
 
-print(post.shortcode)
-print(post.caption[:100] if post.caption else "")
+    for entry in feed.entries[:5]:
+        title = entry.get("title", "")
+        link = entry.get("link", "")
+
+        send(f"{title}\n{link}")
+
+if __name__ == "__main__":
+    main()
