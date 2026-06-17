@@ -20,8 +20,8 @@ from urllib.request import urlopen, Request
 # ---------- Конфиг ----------
 
 RSS_URL = os.environ.get("RSS_URL", "https://rss.app/feeds/pciA3C3UBcPVtJaj.xml")
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-CHAT_ID = os.environ["CHAT_ID"]
+BOT_TOKEN = os.environ["BOT_TELEGRAM_TOKEN"]
+CHAT_ID = os.environ["CHAT_TELEGRAM_ID"]
 
 STATE_FILE = Path(__file__).parent / "posted.json"
 
