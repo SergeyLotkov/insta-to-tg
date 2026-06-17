@@ -1,0 +1,37 @@
+name: RSS to Telegram repost
+
+on:
+  schedule:
+    # Каждый день в 09:00 UTC (~12:00 MSK). Поменяйте при необходимости.
+    - cron: "0 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  repost:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run bot
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RSS_URL: ${{ vars.RSS_URL }}
+        run: python bot.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add posted.json
+          git diff --cached --quiet || git commit -m "Update posted.json [skip ci]"
+          git push
