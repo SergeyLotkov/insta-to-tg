@@ -2,7 +2,7 @@ import feedparser
 import requests
 import os
 
-RSS_URL = "https://rsshub.app/instagram/user/handyclass.ru"
+RSS_URL = ""https://rss.app/feeds/pciA3C3UBcPVtJaj.xml""
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
