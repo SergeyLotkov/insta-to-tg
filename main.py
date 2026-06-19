@@ -2,7 +2,7 @@ import feedparser
 import requests
 import os
 
-RSS_URL = ""https://rss.app/feeds/pciA3C3UBcPVtJaj.xml""
+RSS_URL = ("RSS_URL", "https://rss.app/feeds/pciA3C3UBcPVtJaj.xml")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
