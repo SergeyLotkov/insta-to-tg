@@ -21,19 +21,28 @@ def clean_text(text):
     return text.strip()
 
 def send_media(caption, media_url, is_video=False):
-    """Отправляет фото или видео в Telegram с подписью."""
-    # Выбираем правильный метод API в зависимости от типа медиа
+    """Отправляет фото или видео БЕЗ подписи, а затем отправляет ВЕСЬ текст поста вторым сообщением."""
     method = "sendVideo" if is_video else "sendPhoto"
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/{method}"
     
-    # Telegram принимает прямую ссылку на медиафайл, скачивать его на диск не нужно
+    # 1. Отправляем только медиафайл (без текста)
     payload = {
-        "chat_id": CHAT_ID,
-        "caption": caption[:1024]  # Ограничение Telegram на длину подписи к медиа
+        "chat_id": CHAT_ID
     }
     payload["video" if is_video else "photo"] = media_url
 
     response = requests.post(url, data=payload)
+    
+    # 2. Если медиа успешно ушло и у нас есть текст, отправляем его целиком вторым сообщением
+    if response.json().get("ok") and caption:
+        text_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        
+        text_payload = {
+            "chat_id": CHAT_ID,
+            "text": caption[:4096]  # Ограничение Telegram на одно текстовое сообщение
+        }
+        requests.post(text_url, data=text_payload)
+
     return response
 
 def load_history():
@@ -65,20 +74,25 @@ def main():
         if not link or link in sent_history:
             continue
 
-        # Чистим текст: убираем хэштеги
-        title = entry.get("title", "")
-        caption_text = clean_text(title)
+        # Получаем текст из description (там обычно полный текст), если пусто — берем summary или title
+        raw_text = entry.get("description") or entry.get("summary") or entry.get("title", "")
+        
+        # Если в тексте есть HTML-теги от RSS.app, вырезаем их
+        if "<" in raw_text and ">" in raw_text:
+            raw_text = re.sub(r'<[^>]+>', '', raw_text)
+
+        # Чистим текст от хэштегов
+        caption_text = clean_text(raw_text)
 
         # Ищем медиафайл в RSS (картинку или видео)
         media_url = None
         is_video = False
 
-        # Способ 1: Ищем в media_content (стандарт для видео/фото в RSS.app)
+        # Способ 1: Ищем в media_content
         if "media_content" in entry:
             media_items = entry["media_content"]
             if media_items and len(media_items) > 0:
                 media_url = media_items[0].get("url")
-                # Проверяем, видео это или картинка
                 medium_type = media_items[0].get("medium", "")
                 if medium_type == "video" or (media_url and ".mp4" in media_url):
                     is_video = True
@@ -91,25 +105,24 @@ def main():
                 if enclosures[0].get("type", "").startswith("video") or (media_url and ".mp4" in media_url):
                     is_video = True
 
-        # Если медиафайл найден, отправляем красивым постом
+        # Если медиафайл найден, отправляем
         if media_url:
             print(f"Отправляем медиа ({'Видео' if is_video else 'Фото'}): {media_url}")
             res = send_media(caption_text, media_url, is_video=is_video)
             
-            # Если Telegram вернул ошибку (например, видео слишком большое для ссылки)
+            # Если Telegram вернул ошибку медиа (например, ссылка устарела или формат не тот)
             if not res.json().get("ok"):
                 print(f"Ошибка отправки медиа, пробуем отправить просто текстом: {res.text}")
-                # Запасной вариант: отправляем просто очищенный текст, если медиа не пролезло
                 url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
                 requests.post(url, data={"chat_id": CHAT_ID, "text": f"{caption_text}\n\nСмотреть в Insta: {link}"})
         else:
-            # Если в посте вообще не было медиа (редко для инсты), отправляем только текст
+            # Если в посте вообще не было медиа, отправляем только текст
             url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
             requests.post(url, data={"chat_id": CHAT_ID, "text": caption_text})
 
         save_to_history(link)
         sent_count += 1
-        time.sleep(2)  # Чуть увеличили паузу, так как медиа обрабатывается дольше
+        time.sleep(3)  # Пауза между постами, чтобы Telegram не заблокировал за спам
 
     print(f"Успешно обработано новых постов: {sent_count}")
 
